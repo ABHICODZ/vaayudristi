@@ -8,6 +8,9 @@ router = APIRouter()
 
 import json
 
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
+GCP_LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
+
 # Initialize Google Earth Engine using the provided Hackathon Service Account
 EE_INITIALIZED = False
 try:
@@ -85,16 +88,35 @@ async def analyze_location(lat: float, lon: float):
             detail="Google Earth Engine service account authentication failed. Real data unavailable. No fake data allowed."
         )
 
-        
     # Run heavy Earth Engine calculation in a background thread to prevent FastApi UI lockup!
     try:
         data = await asyncio.to_thread(fetch_gee_data_sync, lat, lon)
+        
+        dominant_source = data['source']
+        if GCP_PROJECT_ID:
+            prompt = (
+                "You are an expert Atmospheric Data Scientist attached to Delhi Municipal Command.\n"
+                f"Analyze this raw Sentinel-5P orbital telemetry for sector {lat}, {lon}:\n"
+                f"- Absorbing Aerosol Index: {data['aerosol']} UVAI\n"
+                f"- Carbon Monoxide (CO) Column Density: {data['co']} mol/m²\n\n"
+                "Look strictly at the data to determine the single most dominant pollution source. "
+                "CO under 0.035 mol/m² usually means NO biomass burning. Aerosol above 0.5 UVAI usually means construction or road dust. "
+                "Return exactly 3-6 words detailing the specific source. No introductory text."
+            )
+            from google import genai
+            client = genai.Client(vertexai=True, project=GCP_PROJECT_ID, location=GCP_LOCATION)
+            gee_response = await client.aio.models.generate_content(
+                model='gemini-3-pro-preview',
+                contents=prompt
+            )
+            dominant_source = gee_response.text.strip().replace('"', '')
+
         return GEEAnalysisResult(
             lat=lat, 
             lon=lon, 
             construction_dust_index=data['aerosol'], 
             biomass_burning_index=data['co'], 
-            dominant_source=data['source']
+            dominant_source=dominant_source
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

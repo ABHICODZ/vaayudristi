@@ -1,4 +1,14 @@
-from fastapi import FastAPI
+from dotenv import load_dotenv; load_dotenv()
+import os
+import pathlib
+
+# Globally configure Google Application Default Credentials to use our Backend Service Account
+# This ensures Vertex AI and Google Earth Engine SDKs authenticate seamlessly without Windows ADC hangs
+credentials_path = os.path.join(os.path.dirname(__file__), "services", "ee-credentials.json")
+if os.path.exists(credentials_path):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.endpoints import api_router

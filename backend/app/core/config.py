@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str | None = None
     VITE_SUPABASE_URL: str | None = None
     VITE_SUPABASE_ANON_KEY: str | None = None
-    
+
+    # Google Cloud / Vertex AI
+    GCP_PROJECT_ID: str | None = None
+    GCP_LOCATION: str = "us-central1"
+
     @property
     def async_database_url(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -25,5 +29,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 settings = Settings()

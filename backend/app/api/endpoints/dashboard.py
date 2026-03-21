@@ -37,9 +37,23 @@ WAQI_TOKEN = os.environ.get("WAQI_TOKEN")
 if not WAQI_TOKEN:
     print("[FATAL] WAQI_TOKEN environment variable is missing. Real WAQI data cannot be fetched.")
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    print("[FATAL] GROQ_API_KEY environment variable is missing. Policy recommendations will fail.")
+# Assuming 'settings' is imported or defined elsewhere, e.g., from a config file
+# For this change, I'll assume 'settings' is available. If not, this would cause an error.
+# Since the prompt only provides a snippet, I'll proceed with the assumption.
+# If 'settings' is not available, it would need to be imported, e.g., from app.config import settings
+# For now, I'll keep the original os.environ.get for GCP_PROJECT_ID and GCP_LOCATION
+# and add GEMINI_API_KEY from os.environ.get as well, to make it syntactically correct
+# without needing an external 'settings' object that isn't defined in the provided context.
+
+# Reverting to os.environ.get for GCP_PROJECT_ID and GCP_LOCATION to maintain
+# syntactic correctness within the provided file context, as 'settings' is not defined.
+# If 'settings' is indeed a global object, it would need to be imported.
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
+GCP_LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
+
+if not GCP_PROJECT_ID:
+    print("[FATAL] GCP_PROJECT_ID is not configured. Policy recommendations will fail.")
+# The original 'else' block for vertexai.init is removed as per the instruction's implied change.
 # Delhi NCR bounding box — all 44 real CPCB/WAQI monitoring stations
 WAQI_BOUNDS_URL = f"https://api.waqi.info/map/bounds/?latlng=28.4,76.8,28.9,77.4&token={WAQI_TOKEN}"
 
@@ -165,7 +179,7 @@ async def fetch_real_station_anchors(client: httpx.AsyncClient) -> list:
                 "lat": float(s["lat"]),
                 "lon": float(s["lon"]),
                 "aqi": aqi_us,
-                "pm25": round(pm25, 1),
+                "pm25": round(float(pm25), 1),
                 "dominant_source": "Live CPCB/WAQI Station",
                 "status": get_status(aqi_us),
                 "trend": "stable",
@@ -279,17 +293,17 @@ async def get_ward_stats(level: str = 'ward'):
             for dist in DISTRICT_META:
                 closest = nearest_anchor(dist['lat'], dist['lon'], anchors)
                 if closest:
-                    district_results.append(WardStat(
-                        id=dist["id"],
-                        name=dist["name"],
-                        lat=dist["lat"],
-                        lon=dist["lon"],
-                        aqi=closest["aqi"],
-                        pm25=closest["pm25"],
-                        dominant_source=f"Nearest Sensor: {closest['name']}",
-                        status=closest["status"],
-                        trend="stable"
-                    ))
+                    district_results.append(WardStat(**{
+                        "id": dist["id"],
+                        "name": dist["name"],
+                        "lat": dist["lat"],
+                        "lon": dist["lon"],
+                        "aqi": closest["aqi"],
+                        "pm25": closest["pm25"],
+                        "dominant_source": f"Nearest Sensor: {closest['name']}",
+                        "status": closest["status"],
+                        "trend": "stable"
+                    }))
             return district_results
 
     # Ward mode: return TNN ML-inferred grid
@@ -299,15 +313,18 @@ async def get_ward_stats(level: str = 'ward'):
 @router.get("/recommendations", response_model=List[Recommendation])
 async def get_policy_recommendations():
     """
-    Generates real-time policy recommendations via Groq Llama LLM,
+    Generates real-time policy recommendations via Google Gemini 1.5,
     analysing the top pollution hotspots from the live ML inference grid.
     """
-    bad_zones = INFERENCE_GRID_CACHE["data"][:5]
+    # Fix the async race condition: Wait up to 30s for ML cycle to populate cache
+    for _ in range(300):
+        if INFERENCE_GRID_CACHE.get("data"):
+            break
+        await asyncio.sleep(0.1)
+
+    bad_zones = INFERENCE_GRID_CACHE.get("data", [])[:5]
 
     try:
-        from groq import Groq
-        groq_client = Groq(api_key=GROQ_API_KEY)
-
         if not bad_zones:
             raise ValueError("No inference data available yet")
 
@@ -324,25 +341,26 @@ async def get_policy_recommendations():
             '[{"id":"REC-1","ward":"<zone>","issue":"<1 sentence>","action":"<1 sentence>","impact":"<1 sentence>","urgency":"Critical|High|Medium"}]'
         )
 
-        completion = await asyncio.to_thread(
-            groq_client.chat.completions.create,
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
-            temperature=0.3,
+        from google import genai
+        client = genai.Client(vertexai=True, project=GCP_PROJECT_ID, location=GCP_LOCATION)
+            
+        response = await client.aio.models.generate_content(
+            model='gemini-1.5-pro',
+            contents=prompt
         )
 
         import re
-        text = completion.choices[0].message.content
+        text = response.text
         match = re.search(r"\[.*\]", text, re.DOTALL)
         if match:
             recs_data = json.loads(match.group(0))
             return [Recommendation(**r) for r in recs_data[:3]]
 
     except Exception as e:
-        print(f"[Groq LLM Error]: {e}")
+        print(f"[Gemini LLM Error]: {e}")
         raise HTTPException(
             status_code=503,
-            detail=f"Groq LLM API failed to generate recommendations: {e}. No simulated responses allowed."
+            detail=f"Gemini LLM API failed to generate recommendations: {e}. No simulated responses allowed."
         )
 
 # ─── Feature 4: Wind Grid (MeteoJSON format) ──────────────────────────────────
@@ -364,8 +382,8 @@ async def get_wind_grid():
         lat = lat_max - (j * dlat)
         for i in range(lon_num):
             lon = lon_min + (i * dlon)
-            lats.append(round(lat, 4))
-            lons.append(round(lon, 4))
+            lats.append(round(float(lat), 4))
+            lons.append(round(float(lon), 4))
             
     url = f"https://api.open-meteo.com/v1/forecast?latitude={','.join(map(str, lats))}&longitude={','.join(map(str, lons))}&current=wind_speed_10m,wind_direction_10m"
     async with httpx.AsyncClient(timeout=30.0) as client:
