@@ -57,7 +57,7 @@ export default function ComplaintModal({ ward, userProfile, onClose }: Complaint
 
       console.log('[ComplaintModal] Submitting payload:', { ...payload, citizen_id: citizenId.substring(0, 8) + '...' });
 
-      const res = await fetch(`${API_BASE}/api/v1/admin/complaints`, {
+      const res = await fetch(`${API_BASE}/api/v1/admin/complaints/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

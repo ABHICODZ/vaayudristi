@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+web-frontend/node_modules/
+web-frontend/dist/
+
+# Data files
+backend/cache/
+backend/dataset_extracted/
+backend_cache_backup/
+backend_dataset_backup/
+*.pkl
+*.pt
+*.zip
+*.csv
+*.xlsx
+backend/app/data/*.graphml
+backend/app/data/synthetic_training_tensor.pkl
+
+# Logs
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives
+archive.zip
+archive_extracted/

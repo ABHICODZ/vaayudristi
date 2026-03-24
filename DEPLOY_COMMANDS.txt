@@ -1,0 +1,54 @@
+=== VayuDrishti GCP Deployment Commands ===
+
+The backend build is currently uploading (479 MB). 
+Once it completes, follow these steps:
+
+=== STEP 1: Wait for Backend Build ===
+The current build process will:
+1. Upload source to GCS
+2. Build Docker image
+3. Push to gcr.io/gee-data-490807/vayudrishti-backend
+
+Monitor in the terminal or run:
+gcloud builds list --limit=1
+
+=== STEP 2: Deploy Backend to Cloud Run ===
+Once build completes, run:
+
+gcloud run deploy vayudrishti-backend --image gcr.io/gee-data-490807/vayudrishti-backend --region us-central1 --platform managed --allow-unauthenticated --memory 2Gi --cpu 2 --max-instances 10 --set-env-vars "WAQI_TOKEN=9abbe99f4595fa8a4d20dd26a06db8e375273034,GCP_PROJECT_ID=gee-data-490807,GCP_LOCATION=us-central1,SUPABASE_URL=https://tmavkmymbdcmugunjtle.supabase.co,SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtYXZrbXltYmRjbXVndW5qdGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzAyMDYsImV4cCI6MjA4OTYwNjIwNn0.BEr2krViE54HjVtmm-WD6KV7cIcDQMOSmM-VyjiH7cY,VITE_SUPABASE_URL=https://tmavkmymbdcmugunjtle.supabase.co,VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtYXZrbXltYmRjbXVndW5qdGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzAyMDYsImV4cCI6MjA4OTYwNjIwNn0.BEr2krViE54HjVtmm-WD6KV7cIcDQMOSmM-VyjiH7cY"
+
+Get backend URL:
+gcloud run services describe vayudrishti-backend --region us-central1 --format="value(status.url)"
+
+=== STEP 3: Build Frontend ===
+cd web-frontend
+gcloud builds submit --tag gcr.io/gee-data-490807/vayudrishti-frontend .
+
+=== STEP 4: Deploy Frontend ===
+gcloud run deploy vayudrishti-frontend --image gcr.io/gee-data-490807/vayudrishti-frontend --region us-central1 --platform managed --allow-unauthenticated --memory 512Mi --cpu 1 --max-instances 10
+
+Get frontend URL:
+gcloud run services describe vayudrishti-frontend --region us-central1 --format="value(status.url)"
+
+=== STEP 5: Update Frontend Environment ===
+You'll need to rebuild frontend with the correct backend URL:
+
+1. Note the backend URL from step 2
+2. Update web-frontend/Dockerfile or rebuild with:
+   --build-arg VITE_API_URL=<BACKEND_URL>
+
+=== ALTERNATIVE: Use Cloud Console ===
+1. Go to: https://console.cloud.google.com/run
+2. Click "CREATE SERVICE"
+3. Select "Deploy from existing container image"
+4. Use: gcr.io/gee-data-490807/vayudrishti-backend
+5. Configure settings and deploy
+
+=== Restore Backup Files After Deployment ===
+Move-Item backend_cache_backup backend/cache -Force
+Move-Item backend_dataset_backup backend/dataset_extracted -Force
+
+===================================
+Project: gee-data-490807
+Region: us-central1
+===================================

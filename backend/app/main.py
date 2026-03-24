@@ -11,6 +11,8 @@ if os.path.exists(credentials_path):
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.api.endpoints import api_router
 import asyncio
@@ -84,6 +86,24 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    # Serve frontend static files if available
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+    if os.path.exists(static_dir):
+        app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
+        
+        @app.get("/{full_path:path}")
+        async def serve_frontend(full_path: str):
+            """Serve frontend for all non-API routes"""
+            if full_path.startswith("api/"):
+                return JSONResponse({"error": "Not found"}, status_code=404)
+            
+            file_path = os.path.join(static_dir, full_path)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return FileResponse(file_path)
+            
+            # Serve index.html for SPA routing
+            return FileResponse(os.path.join(static_dir, "index.html"))
 
     return app
 

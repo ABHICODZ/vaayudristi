@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LeafletMap from './components/LeafletMap';
 import AuthOverlay from './components/AuthOverlay';
-import NationalIntelligenceLanding from './components/NationalIntelligenceLanding';
+import ProfessionalLanding from './components/ProfessionalLanding';
 import ComplaintModal from './components/ComplaintModal';
 import MyComplaints from './components/MyComplaints';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -117,11 +117,11 @@ export default function App() {
   const avgAqi = wards.length > 0 ? Math.round(wards.reduce((acc, curr) => acc + curr.aqi, 0) / wards.length) : 0;
 
   if (showLanding) {
-    return <NationalIntelligenceLanding onLaunch={() => setShowLanding(false)} />;
+    return <ProfessionalLanding onLaunch={() => setShowLanding(false)} />;
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 overflow-hidden h-screen flex flex-col relative w-screen">
+    <div className="bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 flex flex-col relative w-screen min-h-screen">
       
       {/* ComplaintModal — real DB submission, replaces the old fake alert() */}
       {showComplaintModal && (

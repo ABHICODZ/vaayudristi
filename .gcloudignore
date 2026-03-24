@@ -1,0 +1,55 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Node modules
+node_modules/
+web-frontend/node_modules/
+
+# Build outputs
+web-frontend/dist/
+web-frontend/build/
+
+# Cache and logs
+backend/cache/
+*.log
+*.pkl
+*.pt
+*.zip
+*.csv
+*.xlsx
+
+# Dataset files
+backend/dataset_extracted/
+archive_extracted/
+archive.zip
+backend/city_day.csv.zip
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large data files
+backend/app/data/*.graphml
+backend/app/data/*.pkl
+backend/app/data/*.pt

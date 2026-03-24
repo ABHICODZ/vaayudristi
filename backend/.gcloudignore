@@ -1,0 +1,28 @@
+# Cache and data files
+cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pkl
+*.pt
+*.log
+*.zip
+*.csv
+*.xlsx
+
+# Dataset files
+dataset_extracted/
+app/data/*.graphml
+app/data/*.pkl
+app/data/synthetic_training_tensor.pkl
+
+# Test files
+test_*.py
+*_test.py
+
+# Documentation
+*.md
+
+# Virtual environment
+venv/
+env/

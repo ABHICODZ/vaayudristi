@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export default function NationalIntelligenceLanding({ onLaunch }: { onLaunch: () => void }) {
   return (
-    <div className="bg-[#0c0e10] text-white font-['Inter'] overflow-x-hidden">
+    <div className="bg-[#0c0e10] text-white font-['Inter'] overflow-y-auto min-h-screen">
       {/* Telemetry Grid Background */}
       <div className="fixed inset-0 pointer-events-none opacity-40" style={{
         backgroundSize: '100px 100px',
