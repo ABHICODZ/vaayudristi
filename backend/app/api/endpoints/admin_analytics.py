@@ -22,73 +22,91 @@ async def get_admin_overview(current_user: Profile = Depends(require_admin)):
     """
     Real-time admin overview with NO hardcoded values.
     All data from: Supabase DB + ML inference cache + WAQI
+    
+    Returns data even if ML cache is still loading (graceful degradation).
     """
     start_time = datetime.utcnow()
+    print(f"[ADMIN] Overview request started | user={current_user.email}")
+    
     SUPABASE_URL, SUPABASE_KEY = get_supabase_config()
     
     if not SUPABASE_URL or not SUPABASE_KEY:
+        print("[ADMIN] ✗ Database configuration missing")
         raise HTTPException(status_code=503, detail="Database configuration missing")
     
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
     
     try:
-        # Trigger background task if not started (same as dashboard endpoint)
+        # Trigger background task if not started
         from app.api.endpoints.dashboard import BACKGROUND_TASK_STARTED, _autonomous_ml_inference_loop
         if not BACKGROUND_TASK_STARTED:
+            print("[ADMIN] Starting ML inference background task...")
             asyncio.create_task(_autonomous_ml_inference_loop())
             import app.api.endpoints.dashboard as dash_module
             dash_module.BACKGROUND_TASK_STARTED = True
         
-        # Wait up to 60s for ML cache to populate (increased from 30s)
-        for _ in range(600):
+        # Wait up to 10s for ML cache (reduced for faster response)
+        ml_ready = False
+        for _ in range(100):
             if INFERENCE_GRID_CACHE.get("data"):
+                ml_ready = True
                 break
             await asyncio.sleep(0.1)
         
-        # Get ML inference data
+        # Get ML inference data (may be empty if still loading)
         wards_data = INFERENCE_GRID_CACHE.get("data", [])
         
-        if not wards_data:
-            raise HTTPException(status_code=503, detail="ML inference data not available - background task may still be loading")
-        
-        # Compute real metrics from ML data
-        critical_zones = [w for w in wards_data if w.get('aqi', 0) > 300]
-        avg_aqi = sum(w.get('aqi', 0) for w in wards_data) / len(wards_data) if wards_data else 0
+        # Compute metrics from ML data (with fallbacks)
+        if wards_data:
+            critical_zones = [w for w in wards_data if w.get('aqi', 0) > 300]
+            avg_aqi = sum(w.get('aqi', 0) for w in wards_data) / len(wards_data)
+            print(f"[ADMIN] ✓ ML data available | wards={len(wards_data)} critical={len(critical_zones)}")
+        else:
+            critical_zones = []
+            avg_aqi = 0
+            print("[ADMIN] ⚠ ML data not yet available (background task loading)")
         
         # Fetch database counts with proper error handling
         total_complaints = 0
         active_tasks = 0
+        db_errors = []
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                # Fetch complaints - just count the array (simpler)
                 complaints_resp = await client.get(
                     f"{SUPABASE_URL}/rest/v1/complaints?select=id&status=neq.RESOLVED",
                     headers=headers
                 )
                 if complaints_resp.status_code == 200:
                     total_complaints = len(complaints_resp.json())
+                    print(f"[ADMIN] ✓ Complaints fetched | count={total_complaints}")
                 else:
-                    print(f"[ADMIN] Complaints query failed: {complaints_resp.status_code} {complaints_resp.text}")
+                    error_msg = f"Status {complaints_resp.status_code}"
+                    db_errors.append(f"complaints: {error_msg}")
+                    print(f"[ADMIN] ✗ Complaints query failed: {error_msg}")
             except Exception as e:
-                print(f"[ADMIN] Complaints query error: {e}")
+                db_errors.append(f"complaints: {str(e)}")
+                print(f"[ADMIN] ✗ Complaints query error: {e}")
             
             try:
-                # Fetch tasks - just count the array
                 tasks_resp = await client.get(
                     f"{SUPABASE_URL}/rest/v1/tasks?select=id&status=neq.COMPLETED",
                     headers=headers
                 )
                 if tasks_resp.status_code == 200:
                     active_tasks = len(tasks_resp.json())
+                    print(f"[ADMIN] ✓ Tasks fetched | count={active_tasks}")
                 else:
-                    print(f"[ADMIN] Tasks query failed: {tasks_resp.status_code} {tasks_resp.text}")
+                    error_msg = f"Status {tasks_resp.status_code}"
+                    db_errors.append(f"tasks: {error_msg}")
+                    print(f"[ADMIN] ✗ Tasks query failed: {error_msg}")
             except Exception as e:
-                print(f"[ADMIN] Tasks query error: {e}")
+                db_errors.append(f"tasks: {str(e)}")
+                print(f"[ADMIN] ✗ Tasks query error: {e}")
         
         query_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
         
-        return {
+        response_data = {
             "data": {
                 "total_complaints": total_complaints,
                 "active_tasks": active_tasks,
@@ -97,19 +115,26 @@ async def get_admin_overview(current_user: Profile = Depends(require_admin)):
             },
             "metadata": {
                 "sources": ["supabase_complaints", "supabase_tasks", "ml_inference_cache"],
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
                 "query_time_ms": query_time_ms,
-                "ward_count": len(wards_data)
+                "ward_count": len(wards_data),
+                "ml_ready": ml_ready,
+                "db_errors": db_errors if db_errors else None
             }
         }
+        
+        print(f"[ADMIN] ✓ Overview complete | time={query_time_ms}ms ml_ready={ml_ready}")
+        return response_data
     
     except httpx.TimeoutException:
+        print("[ADMIN] ✗ Database query timeout")
         raise HTTPException(status_code=504, detail="Database query timeout")
     except Exception as e:
         import traceback
-        error_detail = f"Failed to fetch overview: {str(e)}\n{traceback.format_exc()}"
-        print(f"[ADMIN] ERROR: {error_detail}")
-        raise HTTPException(status_code=500, detail=error_detail)
+        error_detail = str(e)
+        traceback_str = traceback.format_exc()
+        print(f"[ADMIN] ✗ ERROR: {error_detail}\n{traceback_str}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {error_detail}")
 
 
 @router.get("/hotspots")
