@@ -1,27 +1,14 @@
 @echo off
 echo ========================================
-echo ULTRA-FAST BACKEND DEPLOYMENT
-echo Target: 3-5 minutes
+echo INSTANT BACKEND DEPLOYMENT
+echo No GitHub push - Direct to Cloud Run
 echo ========================================
 echo.
 
-REM Check if gcloud is authenticated
-gcloud auth list --filter=status:ACTIVE --format="value(account)" > nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Not authenticated with gcloud
-    echo Run: gcloud auth login
-    pause
-    exit /b 1
-)
-
-echo [1/3] Pushing code to GitHub...
-git add .
-git commit -m "Backend update - fast deploy" --allow-empty
-git push origin main
-echo.
-
-echo [2/3] Deploying backend to Cloud Run (this takes 3-5 min)...
 cd backend
+
+echo Deploying backend (3-5 minutes)...
+echo.
 
 gcloud run deploy vayudrishti-backend ^
   --source . ^
@@ -36,33 +23,19 @@ gcloud run deploy vayudrishti-backend ^
   --set-env-vars=WAQI_TOKEN=9abbe99f4595fa8a4d20dd26a06db8e375273034,GCP_PROJECT_ID=gee-data-490807,GCP_LOCATION=us-central1,SUPABASE_URL=https://tmavkmymbdcmugunjtle.supabase.co,SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtYXZrbXltYmRjbXVndW5qdGxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzAyMDYsImV4cCI6MjA4OTYwNjIwNn0.BEr2krViE54HjVtmm-WD6KV7cIcDQMOSmM-VyjiH7cY,CORS_ORIGINS=https://vayudrishti-frontend-490807.web.app,http://localhost:5173 ^
   --project=gee-data-490807
 
-cd ..
-
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ========================================
-    echo [3/3] DEPLOYMENT SUCCESSFUL!
+    echo SUCCESS! Backend is live.
     echo ========================================
     echo.
-    echo Your backend URL:
     gcloud run services describe vayudrishti-backend --region=us-central1 --format="value(status.url)" --project=gee-data-490807
-    echo.
-    echo Next steps:
-    echo 1. Copy the URL above
-    echo 2. Update web-frontend/.env with VITE_API_URL=^<URL^>
-    echo 3. Test at: ^<URL^>/health
     echo.
 ) else (
     echo.
-    echo ========================================
-    echo DEPLOYMENT FAILED!
-    echo ========================================
-    echo.
-    echo Troubleshooting:
-    echo 1. Check logs: gcloud run services logs read vayudrishti-backend --region=us-central1
-    echo 2. Verify APIs enabled: gcloud services list --enabled
-    echo 3. Check billing: https://console.cloud.google.com/billing
+    echo FAILED! Check errors above.
     echo.
 )
 
+cd ..
 pause
