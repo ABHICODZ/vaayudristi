@@ -4,12 +4,14 @@ import AuthOverlay from './components/AuthOverlay';
 import ProfessionalLanding from './components/ProfessionalLanding';
 import ComplaintModal from './components/ComplaintModal';
 import MyComplaints from './components/MyComplaints';
+import EnterpriseAdminDashboard from './pages/EnterpriseAdminDashboard';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [wards, setWards] = useState<any[]>([]);
   const [recs, setRecs] = useState<any[]>([]);
   const [selectedWard, setSelectedWard] = useState<any | null>(null);
@@ -120,6 +122,10 @@ export default function App() {
     return <ProfessionalLanding onLaunch={() => setShowLanding(false)} />;
   }
 
+  if (showAdminDashboard) {
+    return <EnterpriseAdminDashboard userProfile={userProfile} session={session} onBack={() => setShowAdminDashboard(false)} />;
+  }
+
   return (
     <div className="bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 flex flex-col relative w-screen min-h-screen">
       
@@ -164,6 +170,15 @@ export default function App() {
         </nav>
         
         <div className="flex items-center gap-6">
+          {userProfile?.role === 'admin' && (
+            <button
+              onClick={() => setShowAdminDashboard(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all text-sm uppercase tracking-wider"
+            >
+              <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+              Admin Center
+            </button>
+          )}
           <div className="h-10 w-px bg-white/10"></div>
           {userProfile && (
             <div className="flex items-center gap-3 bg-white/5 pr-4 pl-1 py-1 rounded-full border border-white/5">

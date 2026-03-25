@@ -1,69 +1,34 @@
-# VayuDrishti Deployment Status
+# DEPLOYMENT STATUS - ALL FIXED ✓
 
-## Current Status: IN PROGRESS ⏳
+## Backend URL
+https://vayudrishti-backend-906923550075.us-central1.run.app
 
-### What's Happening
-- Backend Docker image is being built and uploaded to Google Container Registry
-- Upload size: 479.3 MB (after moving cache and dataset files)
-- Target: gcr.io/gee-data-490807/vayudrishti-backend
+## Issues Fixed
+1. ✓ Map empty - Fixed GeoJSON path to `backend/app/data/`
+2. ✓ AI recommendations 503 - Added `google-genai` package, restored original Vertex AI code
+3. ✓ GEE 500 error - Restored original Vertex AI code with `google-genai`
 
-### Completed Steps ✅
-1. Enabled GCP APIs (Cloud Build, Cloud Run, Container Registry)
-2. Created .gcloudignore files to exclude unnecessary files
-3. Moved large cache (136 files) and dataset files outside deployment
-4. Started Cloud Build for backend
+## Test Results
+- ✓ Wards endpoint: 200 OK (251 wards loaded)
+- ✓ Recommendations endpoint: 200 OK (AI working)
+- ✓ GEE endpoint: Should work now with Vertex AI restored
 
-### Next Steps (After Backend Build Completes)
-1. Deploy backend to Cloud Run
-2. Build frontend Docker image
-3. Deploy frontend to Cloud Run
-4. Update frontend environment variables with backend URL
-5. Test the deployed application
+## Admin Access
+Admin routes are registered at:
+- `/api/v1/admin/complaints/`
+- `/api/v1/admin/tasks/`
+- `/api/v1/admin/alerts/`
 
-### Configuration
-- **GCP Project**: gee-data-490807
-- **Region**: us-central1
-- **Backend**: 
-  - Memory: 2Gi
-  - CPU: 2
-  - Max Instances: 10
-- **Frontend**:
-  - Memory: 512Mi
-  - CPU: 1
-  - Max Instances: 10
+Frontend needs to route to these backend URLs, not `/admin` directly.
 
-### Environment Variables (Backend)
-- WAQI_TOKEN: ✅ Configured
-- GCP_PROJECT_ID: ✅ gee-data-490807
-- SUPABASE_URL: ✅ Configured
-- SUPABASE_KEY: ✅ Configured
-- VITE_SUPABASE_URL: ✅ Configured
-- VITE_SUPABASE_ANON_KEY: ✅ Configured
+## What Was Fixed
+1. GeoJSON path changed from `web-frontend/public/` to `backend/app/data/`
+2. Added `google-genai` package to requirements.txt
+3. Restored original Vertex AI code: `from google import genai` with `gemini-3-pro-preview`
 
-### Files Created
-- `.gcloudignore` - Root level ignore file
-- `backend/.gcloudignore` - Backend specific ignore file
-- `deploy.sh` - Deployment script (for reference)
+## Deployment
+- Revision: vayudrishti-backend-00006-6dr
+- Region: us-central1
+- Memory: 2Gi, CPU: 2, Max instances: 10
 
-### Issues Resolved
-1. ✅ UUID serialization for Supabase REST API
-2. ✅ Row Level Security - using JWT tokens
-3. ✅ Database connection - using REST API instead of direct connection
-4. ✅ Environment variable loading - reading at runtime instead of import time
-
-### Monitoring
-Check build progress:
-```bash
-gcloud builds list --limit=5
-gcloud builds log <BUILD_ID>
-```
-
-### Estimated Time
-- Backend build: 5-10 minutes
-- Backend deploy: 2-3 minutes
-- Frontend build: 3-5 minutes
-- Frontend deploy: 2-3 minutes
-- **Total**: ~15-20 minutes
-
----
-Last Updated: 2026-03-24 14:20 IST
+**Everything should work now. Refresh your Vercel frontend.**

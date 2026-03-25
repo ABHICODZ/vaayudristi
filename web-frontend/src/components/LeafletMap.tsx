@@ -21,9 +21,11 @@ interface LeafletMapProps {
     selectedWard: any | null;
     onWardClick: (ward: any) => void;
     granularity: 'ward' | 'district';
+    disableWind?: boolean;
+    layer?: 'aqi' | 'pm25' | 'sources';
 }
 
-export default function LeafletMap({ wards, selectedWard, onWardClick, granularity }: LeafletMapProps) {
+export default function LeafletMap({ wards, selectedWard, onWardClick, granularity, disableWind = false, layer = 'aqi' }: LeafletMapProps) {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
     const geoJsonLayer = useRef<L.GeoJSON | null>(null);
@@ -39,26 +41,8 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
             }).addTo(mapInstance.current);
             L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
             
-            // ─── HACKATHON EDGE: Live Wind Particle Engine ───
-            fetch('http://localhost:8080/api/v1/dashboard/weather/wind-grid')
-                .then(res => res.json())
-                .then(data => {
-                    // @ts-ignore
-                    const velocityLayer = L.velocityLayer({
-                        displayValues: false,
-                        displayOptions: {
-                            velocityType: 'Global Wind',
-                            displayPosition: 'bottomleft',
-                            displayEmptyString: 'No wind data'
-                        },
-                        data: data,
-                        maxVelocity: 15,
-                        velocityScale: 0.05,
-                        colorScale: ["#1e3a8a", "#3b82f6", "#60a5fa", "#93c5fd", "#dbeafe"] // Sci-fi glowing blue
-                    });
-                    velocityLayer.addTo(mapInstance.current);
-                })
-                .catch(err => console.error("Error loading wind data:", err));
+            // Wind layer disabled for admin dashboard to prevent CORS issues
+            // Can be re-enabled when backend CORS is configured properly
         }
         return () => {
             if (mapInstance.current) {
@@ -68,7 +52,7 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
         };
     }, []);
 
-    // 2. React to API Data and Bind Real Values
+    // 2. React to API Data and Bind Real Values with Layer Support
     useEffect(() => {
         if (!mapInstance.current || wards.length === 0) return;
 
@@ -89,10 +73,27 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
                         
                         let color = '#3b82f6'; // Deep blue fallback
                         if (wardData) {
-                            if (wardData.aqi > 300) color = '#ef4444'; // Red
-                            else if (wardData.aqi > 200) color = '#f97316'; // Orange
-                            else if (wardData.aqi > 100) color = '#f59e0b'; // Yellow
-                            else color = '#10b981'; // Emerald
+                            // Different color schemes based on layer
+                            if (layer === 'aqi') {
+                                if (wardData.aqi > 300) color = '#ef4444'; // Red
+                                else if (wardData.aqi > 200) color = '#f97316'; // Orange
+                                else if (wardData.aqi > 100) color = '#f59e0b'; // Yellow
+                                else color = '#10b981'; // Emerald
+                            } else if (layer === 'pm25') {
+                                const pm25 = wardData.pm25 || 0;
+                                if (pm25 > 250) color = '#dc2626'; // Dark red
+                                else if (pm25 > 150) color = '#f97316'; // Orange
+                                else if (pm25 > 75) color = '#fbbf24'; // Amber
+                                else color = '#22c55e'; // Green
+                            } else if (layer === 'sources') {
+                                // Color by dominant source
+                                const source = wardData.dominant_source || 'Unknown';
+                                if (source.includes('Traffic')) color = '#ef4444';
+                                else if (source.includes('Industrial')) color = '#f59e0b';
+                                else if (source.includes('Construction')) color = '#8b5cf6';
+                                else if (source.includes('Residential')) color = '#06b6d4';
+                                else color = '#64748b';
+                            }
                         }
 
                         return {
@@ -103,12 +104,12 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
                             dashArray: isSelected ? '' : '4'
                         };
                     },
-                    onEachFeature: (feature, layer) => {
+                    onEachFeature: (feature, layer_obj) => {
                         const featureId = feature?.properties?.ward_no || feature?.properties?.name || feature?.properties?.ward_name;
                         const wardData = wards.find(w => w.id === String(featureId));
                         if (wardData) {
                             // Wire the Interaction Engine!
-                            layer.on('click', () => {
+                            layer_obj.on('click', () => {
                                 onWardClick(wardData);
                                 if (mapInstance.current) {
                                     // Smooth camera pan to the clicked node
@@ -116,25 +117,30 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
                                 }
                             });
                             
-                            layer.bindTooltip(`
-                                <div style="text-align:center; padding: 4px;">
-                                    <b>${wardData.name}</b><br/>
-                                    <span style="color:#64748b; font-size:10px;">AQI Level: </span>
-                                    <strong style="font-size:14px; color:${wardData.aqi > 300 ? '#ef4444' : '#f97316'};">${wardData.aqi}</strong>
-                                </div>
-                            `, { direction: 'top', sticky: true, className: 'custom-tooltip' });
+                            // Dynamic tooltip based on layer
+                            let tooltipContent = `<div style="text-align:center; padding: 4px;"><b>${wardData.name}</b><br/>`;
+                            if (layer === 'aqi') {
+                                tooltipContent += `<span style="color:#64748b; font-size:10px;">AQI: </span><strong style="font-size:14px; color:${wardData.aqi > 300 ? '#ef4444' : '#f97316'};">${wardData.aqi}</strong>`;
+                            } else if (layer === 'pm25') {
+                                tooltipContent += `<span style="color:#64748b; font-size:10px;">PM2.5: </span><strong style="font-size:14px;">${wardData.pm25} µg/m³</strong>`;
+                            } else if (layer === 'sources') {
+                                tooltipContent += `<span style="color:#64748b; font-size:10px;">Source: </span><strong style="font-size:12px;">${wardData.dominant_source}</strong>`;
+                            }
+                            tooltipContent += `</div>`;
+                            
+                            layer_obj.bindTooltip(tooltipContent, { direction: 'top', sticky: true, className: 'custom-tooltip' });
                         }
                     }
                 }).addTo(mapInstance.current!);
             })
             .catch(err => console.error("Error loading ward geojson:", err));
 
-    }, [wards, selectedWard]);
+    }, [wards, selectedWard, layer]);
 
     return (
         <div
             ref={mapRef}
-            style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}
+            style={{ height: '100%', width: '100%' }}
         />
     );
 }
