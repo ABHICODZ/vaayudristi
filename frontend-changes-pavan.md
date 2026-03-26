@@ -1,86 +1,61 @@
-# Frontend Changes Log - Pavan
+# Frontend Changes - User Profile Feature Enhancement
 
-## Date: 2026-03-25
-## Branch: feature/user-profile-management
+## Date: Current Session
 
 ### Changes Made:
 
-#### 1. Created UserProfileModal Component
-**File:** `web-frontend/src/components/UserProfileModal.tsx`
+#### 1. Profile Button Visibility Fix
+- **File**: `web-frontend/src/App.tsx`
+- **Change**: Modified profile button condition from `{userProfile && (` to `{session && (` to ensure button always shows when user is logged in
+- **Reason**: Profile button was not displaying consistently because it was waiting for userProfile to load
 
-**Features:**
-- User profile editing modal with glassmorphism design
-- Fields available for editing:
-  - Full Name (text input)
-  - Age (number input, 1-120 range)
-  - Home Ward (dropdown with all Delhi wards)
-  - Respiratory Health Condition (dropdown with multiple conditions)
-- Read-only role display (users cannot change their own role)
-- Password change functionality integrated with Supabase Auth
-- Real-time form validation
-- Success/error message display
-- Responsive design with Framer Motion animations
+#### 2. Phone Number Field Addition
+- **File**: `web-frontend/src/pages/UserProfilePage.tsx` (NEW)
+- **Change**: Created complete user profile page with phone number field
+- **Features**:
+  - Full Name input
+  - Age input
+  - Home Ward input
+  - Phone Number input (NEW)
+  - Health Condition dropdown (asthma, copd, heart_disease, respiratory)
+  - Password change section
+  - Professional UI with glassmorphism effects
 
-**Health Conditions Supported:**
-- No respiratory conditions
-- Asthma
-- COPD (Chronic Obstructive Pulmonary Disease)
-- Chronic Bronchitis
-- Emphysema
-- Severe Allergies
-- Other respiratory condition
+#### 3. Polished Scrollbar Styling
+- **File**: `web-frontend/src/index.css`
+- **Change**: Added custom scrollbar styling with cyan/blue gradient
+- **Features**:
+  - 8px width scrollbar
+  - Gradient thumb with hover effects
+  - Glow effect on hover
+  - Firefox support with scrollbar-width and scrollbar-color
 
-**Delhi Wards List:**
-- Comprehensive list of 70+ Delhi wards in alphabetical order
-- Includes all major areas: Punjabi Bagh, Rohini, Dwarka, Connaught Place, etc.
+#### 4. Profile Page Routing
+- **Files**: 
+  - `web-frontend/src/main.tsx` (MODIFIED)
+  - `web-frontend/src/AppRouter.tsx` (NEW)
+  - `web-frontend/src/App.tsx` (MODIFIED)
+  - `web-frontend/src/pages/UserProfilePage.tsx` (NEW)
+- **Changes**:
+  - Created AppRouter component to manage session/profile state globally
+  - Added `/profile` route for dedicated profile page
+  - Removed UserProfileModal component usage
+  - Profile button now navigates to `/profile` page instead of opening modal
+  - Session and userProfile state lifted to AppRouter for sharing across routes
 
-#### 2. Updated App.tsx
-**File:** `web-frontend/src/App.tsx`
+### New Files Created:
+1. `web-frontend/src/pages/UserProfilePage.tsx` - Full-page profile management
+2. `web-frontend/src/AppRouter.tsx` - Centralized routing with session management
 
-**Changes:**
-- Imported UserProfileModal component
-- Added `showProfileModal` state variable
-- Integrated UserProfileModal in the component tree
-- Made user profile avatar clickable to open profile modal
-- Added hover effects to profile button
-- Profile updates automatically refresh the userProfile state
+### Files Modified:
+1. `web-frontend/src/App.tsx` - Converted to accept props, removed modal, added navigation
+2. `web-frontend/src/main.tsx` - Updated to use AppRouter
+3. `web-frontend/src/index.css` - Added polished scrollbar styles
 
-**User Experience:**
-- Click on profile avatar in top-right corner to open profile modal
-- Modal appears with smooth animation
-- All changes are saved to backend via API
-- Success message shown on successful update
-- Modal auto-closes after successful update
-
-#### 3. UI/UX Improvements
-- Profile button now has hover state with border glow effect
-- Cursor changes to pointer on hover
-- Smooth transitions for all interactive elements
-- Consistent design language with existing dashboard
-
-### API Integration:
-- PUT `/api/v1/user/profile` - Update user profile
-- GET `/api/v1/user/profile` - Get user profile
-- Supabase Auth API for password changes
-
-### Dependencies:
-- No new dependencies added
-- Uses existing: framer-motion, @supabase/supabase-js
-
-### Testing Checklist:
-- [ ] Profile modal opens when clicking user avatar
-- [ ] All form fields are editable
-- [ ] Role field is read-only
-- [ ] Form validation works correctly
-- [ ] Profile updates save successfully
-- [ ] Password change functionality works
-- [ ] Success/error messages display correctly
-- [ ] Modal closes after successful update
-- [ ] Responsive design works on mobile
-
-### Notes:
-- Users cannot change their role (admin-only operation)
-- Age must be between 1 and 120
-- Password must be at least 6 characters
-- Health condition automatically sets has_asthma flag
-- All changes are persisted to Supabase database
+### User Experience Improvements:
+- Profile button now always visible when logged in
+- Dedicated full-page profile experience (not a popup)
+- Phone number field for future SMS notifications
+- Smooth navigation with back button
+- Polished scrollbars throughout the app
+- Better state management across routes

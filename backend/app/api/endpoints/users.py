@@ -19,6 +19,8 @@ class ProfileUpdateRequest(BaseModel):
     full_name: str | None = None
     age: int | None = None
     home_ward: str | None = None
+    phone_number: str | None = None
+    health_condition: str | None = None
     has_asthma: bool | None = None
 
 def get_supabase_config():
@@ -91,6 +93,10 @@ async def update_user_profile(
         update_data["age"] = profile_data.age
     if profile_data.home_ward is not None:
         update_data["home_ward"] = profile_data.home_ward
+    if profile_data.phone_number is not None:
+        update_data["phone_number"] = profile_data.phone_number
+    if profile_data.health_condition is not None:
+        update_data["health_condition"] = profile_data.health_condition
     if profile_data.has_asthma is not None:
         update_data["has_asthma"] = profile_data.has_asthma
     
