@@ -128,3 +128,31 @@
               0 0 40px rgba(239, 68, 68, 0.2),
               0 0 60px rgba(239, 68, 68, 0.1);
 }
+
+/* Polished Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.4), rgba(59, 130, 246, 0.4));
+  border-radius: 4px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.6), rgba(59, 130, 246, 0.6));
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.3);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.4) rgba(15, 23, 42, 0.5);
+}

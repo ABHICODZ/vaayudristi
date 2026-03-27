@@ -72,26 +72,5 @@ export default function AuthOverlay({ session, setSession, userProfile, setUserP
     )
   }
 
-  return (
-    <div className="absolute top-6 right-6 z-[1000] flex items-center gap-4 bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-xl shadow-2xl">
-        <div className="flex flex-col text-right">
-            <span className="text-xs font-bold text-white uppercase tracking-widest">{session.user.email}</span>
-            <div className="flex items-center gap-2 justify-end mt-1">
-                {userProfile?.role === 'admin' ? (
-                   <span className="text-[9px] text-amber-400 border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">Admin</span>
-                ) : (
-                   <span className="text-[9px] text-slate-400 border border-slate-600 bg-slate-800 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">Citizen</span>
-                )}
-                <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest">Connected</span>
-            </div>
-        </div>
-        <button 
-            onClick={() => supabase.auth.signOut()}
-            className="p-2 bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/40 text-rose-400 rounded-lg transition-all"
-            title="Secure Sign Out"
-        >
-            <span className="material-symbols-outlined text-sm">logout</span>
-        </button>
-    </div>
-  )
+  return null; // Profile button in header handles logged-in state
 }

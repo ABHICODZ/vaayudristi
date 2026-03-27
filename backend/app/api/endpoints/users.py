@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
+from pydantic import BaseModel
 
 from app.db.database import get_db
 from app.db.admin_models import Complaint, Profile
@@ -12,6 +13,15 @@ from app.schemas.admin_schemas import ComplaintResponse
 from app.api.deps import get_current_user, oauth2_scheme
 
 router = APIRouter()
+
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str | None = None
+    age: int | None = None
+    home_ward: str | None = None
+    phone_number: str | None = None
+    health_condition: str | None = None
+    has_asthma: bool | None = None
 
 def get_supabase_config():
     """Get Supabase configuration from environment variables"""
@@ -55,6 +65,109 @@ async def get_my_complaints(
         raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch complaints: {resp.text}")
     
     return resp.json()
+
+
+@router.put("/profile")
+async def update_user_profile(
+    profile_data: ProfileUpdateRequest,
+    current_user: Profile = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Update the current user's profile information.
+    Users can update: full_name, age, home_ward, has_asthma
+    Role cannot be changed by users (admin-only operation)
+    """
+    SUPABASE_URL, SUPABASE_KEY = get_supabase_config()
+    
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase configuration missing")
+    
+    # Build update payload (only include fields that were provided)
+    update_data = {}
+    if profile_data.full_name is not None:
+        update_data["full_name"] = profile_data.full_name
+    if profile_data.age is not None:
+        if profile_data.age < 1 or profile_data.age > 120:
+            raise HTTPException(status_code=400, detail="Age must be between 1 and 120")
+        update_data["age"] = profile_data.age
+    if profile_data.home_ward is not None:
+        update_data["home_ward"] = profile_data.home_ward
+    if profile_data.phone_number is not None:
+        update_data["phone_number"] = profile_data.phone_number
+    if profile_data.health_condition is not None:
+        update_data["health_condition"] = profile_data.health_condition
+    if profile_data.has_asthma is not None:
+        update_data["has_asthma"] = profile_data.has_asthma
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+    
+    start = time.time()
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{current_user.id}"
+        try:
+            resp = await client.patch(url, headers=headers, json=update_data)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Database connection failed: {str(e)}")
+    
+    elapsed = int((time.time() - start) * 1000)
+    print(f"[users] PUT /user/profile → user={current_user.id} elapsed={elapsed}ms")
+    
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=f"Failed to update profile: {resp.text}")
+    
+    updated_profile = resp.json()
+    if not updated_profile or len(updated_profile) == 0:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return updated_profile[0]
+
+
+@router.get("/profile")
+async def get_user_profile(
+    current_user: Profile = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Get the current user's complete profile information
+    """
+    SUPABASE_URL, SUPABASE_KEY = get_supabase_config()
+    
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase configuration missing")
+    
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {token}"
+    }
+    
+    start = time.time()
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{current_user.id}&select=*"
+        try:
+            resp = await client.get(url, headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Database connection failed: {str(e)}")
+    
+    elapsed = int((time.time() - start) * 1000)
+    print(f"[users] GET /user/profile → user={current_user.id} elapsed={elapsed}ms")
+    
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=f"Failed to fetch profile: {resp.text}")
+    
+    profile_data = resp.json()
+    if not profile_data or len(profile_data) == 0:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return profile_data[0]
 
 
 @router.get("/{username}/exposure")

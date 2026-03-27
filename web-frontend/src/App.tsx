@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from './supabaseClient';
 import LeafletMap from './components/LeafletMap';
 import AuthOverlay from './components/AuthOverlay';
 import ProfessionalLanding from './components/ProfessionalLanding';
@@ -8,9 +10,22 @@ import EnterpriseAdminDashboard from './pages/EnterpriseAdminDashboard';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function App() {
-  const [session, setSession] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+interface AppProps {
+  session: any;
+  setSession: (session: any) => void;
+  userProfile: any;
+  setUserProfile: (profile: any) => void;
+}
+
+export default function App({ session, setSession, userProfile, setUserProfile }: AppProps) {
+  const navigate = useNavigate();
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[App] Session:', session);
+    console.log('[App] UserProfile:', userProfile);
+  }, [session, userProfile]);
+  
   const [showAdminDashboard, setShowAdminDashboard] = useState<boolean>(false);
   const [wards, setWards] = useState<any[]>([]);
   const [recs, setRecs] = useState<any[]>([]);
@@ -179,17 +194,29 @@ export default function App() {
               Admin Center
             </button>
           )}
-          <div className="h-10 w-px bg-white/10"></div>
-          {userProfile && (
-            <div className="flex items-center gap-3 bg-white/5 pr-4 pl-1 py-1 rounded-full border border-white/5">
-              <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden ring-1 ring-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold uppercase">
-                {userProfile.full_name?.charAt(0) || userProfile.email?.charAt(0) || 'U'}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label text-xs font-bold tracking-widest text-slate-200 uppercase">{userProfile.full_name || 'Citizen'}</span>
-                <span className="text-[9px] font-bold text-cyan-500 uppercase tracking-widest">{userProfile.role} Auth</span>
-              </div>
-            </div>
+          {session && (
+            <>
+              <div className="h-10 w-px bg-white/10"></div>
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-3 bg-white/5 pr-4 pl-1 py-1 rounded-full border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden ring-1 ring-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold uppercase">
+                  {userProfile?.full_name?.charAt(0) || session.user?.email?.charAt(0) || 'U'}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-label text-xs font-bold tracking-widest text-slate-200 uppercase">{userProfile?.full_name || session.user?.email || 'Citizen'}</span>
+                  <span className="text-[9px] font-bold text-cyan-500 uppercase tracking-widest">{userProfile?.role || 'citizen'} Auth</span>
+                </div>
+              </button>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="p-2 bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/40 text-rose-400 rounded-lg transition-all"
+                title="Sign Out"
+              >
+                <span className="material-symbols-outlined text-lg">logout</span>
+              </button>
+            </>
           )}
         </div>
       </header>
