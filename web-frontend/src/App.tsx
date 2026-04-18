@@ -185,7 +185,8 @@ export default function App({ session, setSession, userProfile, setUserProfile }
         </nav>
         
         <div className="flex items-center gap-6">
-          {userProfile?.role === 'admin' && (
+          {/* Admin Center: always visible, navigates to /admin which has passphrase gate */}
+          {userProfile?.role === 'admin' ? (
             <button
               onClick={() => setShowAdminDashboard(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all text-sm uppercase tracking-wider"
@@ -193,6 +194,14 @@ export default function App({ session, setSession, userProfile, setUserProfile }
               <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
               Admin Center
             </button>
+          ) : (
+            <a
+              href="/admin"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/80 to-pink-600/80 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all text-sm uppercase tracking-wider"
+            >
+              <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+              Admin
+            </a>
           )}
           {session && (
             <>
